@@ -1,0 +1,5 @@
+tcping
+nslookup
+urllib3
+# requests
+# forcediphttpsadapter
