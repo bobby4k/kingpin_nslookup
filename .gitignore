@@ -3,6 +3,8 @@ __pycache__/
 *.py[cod]
 *$py.class
 .vscode/
+*_inuse.*
+*.csv
 
 # C extensions
 *.so

@@ -3,3 +3,7 @@ nslookup
 urllib3
 # requests
 # forcediphttpsadapter
+
+# [optional]
+sqlite3
+psycopg2
