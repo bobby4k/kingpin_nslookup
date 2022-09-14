@@ -5,6 +5,7 @@ __pycache__/
 .vscode/
 *_inuse.*
 *.csv
+*.sqlite3
 
 # C extensions
 *.so

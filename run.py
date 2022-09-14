@@ -3,18 +3,19 @@
     
 """
 import time#
-import asyncio
-from unittest import result#
+import re#
 
 from nslookup import Nslookup#
 from tcping import Ping#
 import urllib3#
 
-# from config import KP_GLOBAL_HOST_GROUP#
-# from config import KP_GLOBAL_DATABASE#
+from config import KP_GLOBAL_HOST_GROUP#
+from config import KP_GLOBAL_DATABASE#
 from config import KP_GLOBAL_DNS#
-from config_inuse import KP_GLOBAL_HOST_GROUP#
-from config_inuse import KP_GLOBAL_DATABASE#
+from config import KP_GLOBAL_CHECKIP_NUM#
+from config import KP_GLOBAL_PING_SUCC_RATE#
+# from config_inuse import KP_GLOBAL_HOST_GROUP#
+# from config_inuse import KP_GLOBAL_DATABASE#
 
 import record as kp_record#
 
@@ -72,7 +73,7 @@ class kp_lookup():
 
 
     @staticmethod
-    def ping_check(ip,port=80,timeout=1,count=2):
+    def ping_check(ip,port=80,timeout=1,count=5):
         ping = Ping(ip, port=port, timeout=timeout)
         ping.ping(count=count)
 
@@ -96,7 +97,7 @@ class kp_lookup():
         kp_host_ret = []
         for ip in iplist:
             ret = self.ping_check(ip)
-            if ret[0] == 100:
+            if ret[0] >= KP_GLOBAL_PING_SUCC_RATE:
                 kp_host_ret.append({'domain':host['domain'],'ip':ip,'delay':ret[1]})
         #排序
         kp_host_ret.sort(key=lambda x:x['delay'], reverse=False)
@@ -104,12 +105,17 @@ class kp_lookup():
         #第三步 check url
         if host.__contains__('check'):
             i = 0
+            j = KP_GLOBAL_CHECKIP_NUM if KP_GLOBAL_CHECKIP_NUM>0 else 100
+
             for hret in kp_host_ret:
                 if self.url_check(host['check'], hret['ip']) == 200:
                     hret.update({'check':1})
                     kp_host_ret[i] = hret
-                    print(f"best ip:{hret}")
-                    break
+                    print(f"best ip[{i}]:{hret}")
+                    j -= 1
+                    if j==0:
+                        break
+                #END if
                 i += 1
         
         return kp_host_ret
@@ -120,19 +126,26 @@ class kp_lookup():
         for host in KP_GLOBAL_HOST_GROUP:
             ret = self.lookup_one_domain(host)
             results += ret
-            break
+            # break #TEST
+        
+        if len(results)==0:
+            print("None ip available!")
+            return
 
-        #纪律数据
+        #记录数据
+        kpath = KP_GLOBAL_DATABASE['dsn'] if KP_GLOBAL_DATABASE.__contains__('dsn') else KP_GLOBAL_DATABASE['path']
         match KP_GLOBAL_DATABASE['type']:
             case 'csv':
-                kp_record.record_to_csv(file=KP_GLOBAL_DATABASE['path'],data=results)
+                total_changes = kp_record.record_to_csv(file=kpath,data=results)
             case 'sqlite':
-                pass
+                total_changes = kp_record.record_to_sqlite(file=kpath,data=results)
             case 'postgres':
-                pass
+                total_changes = kp_record.record_to_postgres(dsn=kpath,data=results)
             case _:
                 raise ValueError(f"no support for database:{KP_GLOBAL_DATABASE['type']}")
-    
+
+        print(f"results[{total_changes}] write to {KP_GLOBAL_DATABASE['type']}: {re.sub(r'password=.+','passwd=***',kpath)}")
+    #END run
 #END class
 
 def main():
