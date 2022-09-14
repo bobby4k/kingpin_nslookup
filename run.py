@@ -139,7 +139,10 @@ class kp_lookup():
         results = []
         for host in KP_GLOBAL_HOST_GROUP:
             ret = self.lookup_one_domain(host)
-            results += ret
+            if len(ret)==0:
+                print(f"{host['domain']}: None ip available!")
+            else:
+                results += ret
             # break #TEST
         
         if len(results)==0:
