@@ -68,7 +68,7 @@ class kp_lookup():
                 timeout=2,
                 )
         except Exception as e:
-            print(f"Error Raised: {e}")
+            print(f"{hparse.hostname} Error Raised: {e}")
             return 400
         
         return res.status
