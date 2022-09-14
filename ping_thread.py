@@ -13,7 +13,8 @@ def ping_check(ip,port=80,timeout=1,count=5):
         float(ret.average.rstrip('ms'))
 
 def multi_ping(iplist):
-    pool = ThreadPoolExecutor(max_workers=10)
+    # default max_workers = min(32, (os.cpu_count() or 1) + 4)
+    pool = ThreadPoolExecutor() #max_workers=10 
     thlist = []
     for ip in iplist:
         th = pool.submit(ping_check,ip)
