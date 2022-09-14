@@ -9,14 +9,17 @@ from nslookup import Nslookup#
 from tcping import Ping#
 import urllib3#
 
-from config import KP_GLOBAL_HOST_GROUP#
-from config import KP_GLOBAL_DATABASE#
 from config import KP_GLOBAL_DNS#
 from config import KP_GLOBAL_CHECKIP_NUM#
 from config import KP_GLOBAL_PING_SUCC_RATE#
+
+from config import KP_GLOBAL_HOST_GROUP#
+from config import KP_GLOBAL_DATABASE#
+#TEST
 # from config_inuse import KP_GLOBAL_HOST_GROUP#
 # from config_inuse import KP_GLOBAL_DATABASE#
 
+from ping_thread import multi_ping#
 import record as kp_record#
 
 class kp_lookup():
@@ -62,6 +65,7 @@ class kp_lookup():
                 hparse.path,
                 headers={"Host":hparse.hostname},
                 assert_same_host=False,
+                timeout=2,
                 )
         except Exception as e:
             print(f"Error Raised: {e}")
@@ -95,10 +99,20 @@ class kp_lookup():
 
         #第二步tcpping
         kp_host_ret = []
+        # for ip in iplist:
+        #     ret = self.ping_check(ip)
+        #     if ret[0] >= KP_GLOBAL_PING_SUCC_RATE:
+        #         kp_host_ret.append({'domain':host['domain'],'ip':ip,'delay':ret[1]})
+
+        #多线程优化
+        ping_ret = multi_ping(iplist)
+        i = 0
         for ip in iplist:
-            ret = self.ping_check(ip)
+            ret = ping_ret[i]
             if ret[0] >= KP_GLOBAL_PING_SUCC_RATE:
                 kp_host_ret.append({'domain':host['domain'],'ip':ip,'delay':ret[1]})
+            i += 0
+
         #排序
         kp_host_ret.sort(key=lambda x:x['delay'], reverse=False)
 
