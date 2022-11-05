@@ -4,13 +4,17 @@
 from concurrent.futures import ThreadPoolExecutor#
 from tcping import Ping#
 
-def ping_check(ip,port=80,timeout=1,count=5):
-    ping = Ping(ip, port=port, timeout=timeout)
-    ping.ping(count=count)
+def ping_check(ip,port=80,timeout=3,count=5):
+    try:
+        ping = Ping(ip, port=port, timeout=timeout)
+        ping.ping(count=count)
 
-    ret = ping.result.rows[0]
-    return float(ret.success_rate.rstrip('%')) ,\
-        float(ret.average.rstrip('ms'))
+        ret = ping.result.rows[0]
+        return float(ret.success_rate.rstrip('%')) ,\
+            float(ret.average.rstrip('ms'))
+    except Exception as ex:
+        print(f"Ping Except {ip}:80 ex:{repr(ex)}")
+        return 0,0
 
 def multi_ping(iplist):
     # default max_workers = min(32, (os.cpu_count() or 1) + 4)

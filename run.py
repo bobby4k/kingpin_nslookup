@@ -4,28 +4,44 @@
 """
 import time#
 import re#
+import platform#
 
 from nslookup import Nslookup#
 from tcping import Ping#
 import urllib3#
 
-from config import KP_GLOBAL_DNS#
-from config import KP_GLOBAL_CHECKIP_NUM#
-from config import KP_GLOBAL_PING_SUCC_RATE#
-
-from config import KP_GLOBAL_HOST_GROUP#
-from config import KP_GLOBAL_DATABASE#
-#TEST
-# from config_inuse import KP_GLOBAL_HOST_GROUP#
-# from config_inuse import KP_GLOBAL_DATABASE#
+# from config_inuse import KP_GLOBAL_REPLACE_HOSTS,KP_GLOBAL_HOST_GROUP,KP_GLOBAL_DATABASE, \
+from config import KP_GLOBAL_REPLACE_HOSTS,KP_GLOBAL_HOST_GROUP,KP_GLOBAL_DATABASE, \
+    KP_GLOBAL_DNS, KP_GLOBAL_CHECKIP_NUM, KP_GLOBAL_PING_SUCC_RATE#
 
 from ping_thread import multi_ping#
 import record as kp_record#
 
 class kp_lookup():
+    need_replace = False
+    _hosts_filepath = ''
+    _hosts_list = {}  ##host 第一个ip
     
     def __init__(self) -> None:
-        pass
+        ##判断操作系统
+        self.need_replace = KP_GLOBAL_REPLACE_HOSTS['replace'] if KP_GLOBAL_REPLACE_HOSTS.__contains__('replace') else False
+        
+        if self.need_replace is False:
+            return
+        
+        if KP_GLOBAL_REPLACE_HOSTS.__contains__('filepath'):
+            self._hosts_filepath = KP_GLOBAL_REPLACE_HOSTS['filepath']
+            return
+        
+        syst = platform.system()
+        if 'Linux'==syst:
+            self._hosts_filepath = '/etc/hosts'
+        elif 'Windows'==syst:
+            self._hosts_filepath = 'c:\Windows\System32\drivers\etc\hosts'
+        else:
+            print(f"unkown system: {syst}")
+            exit(4000)
+    #END init
     
     @staticmethod
     def ns_query(domain):
@@ -38,9 +54,18 @@ class kp_lookup():
         Returns:
             list: ip list
         """
-        dns_query = Nslookup(dns_servers=[KP_GLOBAL_DNS], verbose=False, tcp=False)
-        ips_record = dns_query.dns_lookup(domain)
-        return ips_record.answer
+        dnslist = KP_GLOBAL_DNS if isinstance(KP_GLOBAL_DNS,list) else [KP_GLOBAL_DNS]
+        iplist = []
+        for dns in dnslist:
+            try:
+                dns_query = Nslookup(dns_servers=[dns], verbose=False, tcp=False)
+                ips_record = dns_query.dns_lookup(domain)
+                if len(ips_record.answer)>0:
+                    iplist += ips_record.answer
+            except Exception as ex:
+                print(f"Except dns:{dns} domain:{domain} Ex:{repr(ex)}")
+        return iplist
+    #END ns_query
 
     @staticmethod
     def url_check(url,ip):
@@ -106,12 +131,13 @@ class kp_lookup():
 
         #多线程优化
         ping_ret = multi_ping(iplist)
+        
         i = 0
         for ip in iplist:
             ret = ping_ret[i]
             if ret[0] >= KP_GLOBAL_PING_SUCC_RATE:
                 kp_host_ret.append({'domain':host['domain'],'ip':ip,'delay':ret[1]})
-            i += 0
+            i += 1
 
         #排序
         kp_host_ret.sort(key=lambda x:x['delay'], reverse=False)
@@ -142,6 +168,14 @@ class kp_lookup():
             if len(ret)==0:
                 print(f"{host['domain']}: None ip available!")
             else:
+                #记录第一个ip
+                self._hosts_list[host['domain']] = ret[0]
+                for v in ret:
+                    ##如果有check的 则重新纪律
+                    if v.__contains__('check') and 1==v['check']:
+                        self._hosts_list[host['domain']] = v
+                        break
+
                 results += ret
             # break #TEST
         
@@ -163,11 +197,31 @@ class kp_lookup():
 
         print(f"results[{total_changes}] write to {KP_GLOBAL_DATABASE['type']}: {re.sub(r'password=.+','passwd=***',kpath)}")
     #END run
+    
+    def replace(self):
+        filepath = self._hosts_filepath
+        hlist = self._hosts_list
+        
+        for host in KP_GLOBAL_HOST_GROUP:
+            if not hlist.__contains__(host['domain']):
+                continue
+            
+            ip = hlist[host['domain']]['ip']
+            domains = host['subdomains']+[host['domain']] if host.__contains__('subdomains') else [host['domain']] 
+            if len(ip)<4 or len(domains)==0:
+                continue
+            cc = kp_record.fuzzy_replace_hosts(filepath, domains, ip)
+            print(f"\n>>>replace hosts ip:{ip} delay:{hlist[host['domain']]['delay']}ms domains:{domains} rec:{cc}")
+    
 #END class
 
 def main():
-    kp_lookup().run()
-    
+    obj = kp_lookup()
+    #拿到iplist 并记录
+    obj.run()
+    #修改hosts文件
+    if obj.need_replace:
+        obj.replace()
 
 
 if __name__ == '__main__':

@@ -3,6 +3,12 @@
     
 """
 
+##是否直接替换hosts文件中的内容
+KP_GLOBAL_REPLACE_HOSTS = {
+    'replace' : False,
+    # 'filepath': '/etc/hosts',
+}
+
 #数据保存地址
 #type: csv, sqlite, postgresql
 KP_GLOBAL_DATABASE = {
@@ -17,7 +23,7 @@ KP_GLOBAL_DATABASE = {
 }
 
 #DNS server
-KP_GLOBAL_DNS = '8.8.8.8'
+KP_GLOBAL_DNS = ['8.8.8.8','223.5.5.5','180.76.76.76','114.114.114.114']
 #检查多少个ip可用性,0表示全部
 KP_GLOBAL_CHECKIP_NUM = 3
 #是否允许ping丢包, 默认100不允许丢包

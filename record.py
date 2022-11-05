@@ -87,6 +87,50 @@ def kp_sql_inserts(data):
     return sql
 
 
+def fuzzy_replace_hosts(filepath:str, domains:list, newip:str=None):
+    """
+    模糊替换文本中的一行, 仅为hosts使用
+        找到 oldstr之后, 使用newstr替换改行
+        最后仍旧没有找到, append文件末尾
+
+    Args:
+        filepath (str): 文件绝对路径
+        oldstr (str, optional): Defaults to ''.
+        newstr (str, optional): Defaults to None.
+
+    Returns:
+        int: 
+    """
+    if domains is None or len(domains)==0 \
+            or newip is None:
+        print("content can't be replace with empty str")
+        return False
+
+    with open(filepath,'r+',encoding='utf-8') as filetxt:
+        domains = domains.copy()
+        
+        lines=filetxt.readlines()
+        filetxt.seek(0)
+        i = -1
+        for line in lines:
+            i += 1
+            for host in domains:
+                if " "+host in line or "\t"+host in line:
+                    lines[i] = f"{newip}    {host}\n"
+                    # print(f"remo:{host} i:{i}")
+                    domains.remove(host)
+
+        if len(domains)>0:
+            newstr = f"\n{newip}    "
+            newstr += newstr.join(domains)
+            lines.append(f"\n##modify by kingpin_nslookup{newstr}\n")
+
+        filetxt.write("".join(lines))
+    #END with open
+    return len(newip)
+#END replace_file_contents
+
+
 def main():
     t_data = [{'ip': '16.163.84.236', 'delay': 102.23, 'check': 1}, {'ip': '18.163.65.176', 'delay': 102.43}]
     record_to_csv(file='hosts.csv',data=t_data)
