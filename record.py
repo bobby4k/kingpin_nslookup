@@ -87,7 +87,7 @@ def kp_sql_inserts(data):
     return sql
 
 
-def fuzzy_replace_hosts(filepath:str, domains:list, newip:str=None):
+def fuzzy_replace_hosts(filepath:str, domains:list, newip:str):
     """
     模糊替换文本中的一行, 仅为hosts使用
         找到 oldstr之后, 使用newstr替换改行
@@ -102,7 +102,7 @@ def fuzzy_replace_hosts(filepath:str, domains:list, newip:str=None):
         int: 
     """
     if domains is None or len(domains)==0 \
-            or newip is None:
+            or 4!=len(newip.split('.')):
         print("content can't be replace with empty str")
         return False
 
